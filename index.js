@@ -3,6 +3,7 @@ var q = require('component-query');
 var doc = require('get-doc');
 var root = doc && doc.documentElement;
 var cookie = require('cookie-cutter');
+var ua = require('ua-parser-js');
 
 
 // platform dependent functionality
@@ -24,7 +25,7 @@ var mixins = {
 };
 
 var SmartBanner = function(options) {
-    var userAgent = navigator.userAgent;
+    var agent = ua(navigator.userAgent);
     this.options = extend({}, {
         daysHidden: 15,
         daysReminder: 90,
@@ -32,22 +33,24 @@ var SmartBanner = function(options) {
         button: 'OPEN', // Text for the install button
         store: {
             ios: 'On the App Store',
-            android: 'In Google Play'
+            android: 'In Google Play',
+            windows: 'In the Windows Store'
         },
         price: {
             ios: 'FREE',
-            android: 'FREE'
+            android: 'FREE',
+            windows: 'FREE'
         },
         force: false // put platform type (ios, android, etc.) here for emulation
     }, options || {});
 
     if (this.options.force) {
         this.type = this.options.force;
-    }
-    else if (userAgent.match(/iPad|iPhone|iPod/i) !== null && userAgent.match(/Safari/i) !== null) {
+    } else if (agent.os.name === 'Windows Phone' || agent.os.name === 'Windows Mobile') {
+        this.type = 'windows';
+    } else if (agent.os.name === 'iOS') {
         this.type = 'ios';
-    // Check webview and native smart banner support (iOS 6+)
-    } else if (userAgent.match(/Android/i) !== null) {
+    } else if (agent.os.name === 'Android') {
         this.type = 'android';
     }
 
@@ -140,7 +143,11 @@ SmartBanner.prototype = {
             return;
         }
 
-        this.appId = /app-id=([^\s,]+)/.exec(meta.getAttribute('content'))[1];
+        if (this.type === 'windows') {
+            this.appId = meta.getAttribute('content');
+        } else {
+            this.appId = /app-id=([^\s,]+)/.exec(meta.getAttribute('content'))[1];
+        }
 
         return this.appId;
     }
